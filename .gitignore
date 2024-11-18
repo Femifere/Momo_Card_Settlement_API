@@ -1,0 +1,12 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+
+Momo Card Settlement Project\.idea
+Momo Card Settlement Project\.pytest_cache
+Momo Card Settlement Project\.vscode
+Momo Card Settlement Project\myenv\Scripts
+Momo Card Settlement Project\myenv\share
+Momo Card Settlement Project\myenv\__pycache__
+Momo Card Settlement Project\myenv\Lib
+Momo Card Settlement Project\myenv\Include
