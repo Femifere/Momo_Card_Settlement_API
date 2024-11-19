@@ -1,37 +1,30 @@
 #db_operations.py
+import logging
+from contextlib import asynccontextmanager
+
+import pandas as pd
+from pydantic import ValidationError
+
+from api.schemas import TransactionBase
+from sqlalchemy import Column, Integer, String, Date, DECIMAL, CHAR, Text
+from sqlalchemy import insert
+from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.future import select
-from sqlalchemy.dialects.mysql import insert
-from sqlalchemy import Column, Integer, String, Date, DECIMAL, CHAR, Text
-from contextlib import asynccontextmanager
-import pandas as pd
-import logging
+from sqlalchemy.orm import sessionmaker
+
 from utils.parse_transform import parse_csv, deduplicate_data
-import asyncio
-import logging
-import sys
 
 # Configure the logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ],
-)
-
-# Get a logger instance
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-
-#using aiomysql driver to connect to mySQL Database
+# Database configuration
 DATABASE_URL = "mysql+aiomysql://root@127.0.0.1:3306/momo_card_settlement"
-
-# Configured async SQLAlchemy engine and session
 engine = create_async_engine(DATABASE_URL, pool_size=10, max_overflow=20)
 AsyncSessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+
 Base = declarative_base()
 
 
@@ -118,7 +111,8 @@ def create_tables():
 create_tables()
 
 
-#Session
+
+# Session management
 @asynccontextmanager
 async def get_session():
     async with AsyncSessionLocal() as session:
@@ -129,88 +123,160 @@ async def get_session():
             raise
 
 
-# Function to insert CSV data into the database
-async def insert_to_db(df: pd.DataFrame):
-    try:
-        logger.info("Starting the insertion process.")
+# Improved preprocessing with logging
+async def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
+    """Preprocess the data: convert dates, handle NaNs, and filter invalid rows."""
+    logger.info("Starting data preprocessing.")
 
-        # Convert date columns to datetime
-        date_columns = ['BANKING_DATE', 'ACCOUNT_DATE_CLOSE']
-        for col in date_columns:
-            if col in df.columns:
-                logger.info(f"Converting column '{col}' to datetime.")
-                df[col] = pd.to_datetime(df[col], errors='coerce')
-                logger.info(f"Column '{col}' converted to datetime.")
-        logger.info("Date columns converted to datetime.")
+    # Convert date columns to datetime
+    date_columns = ['BANKING_DATE', 'ACCOUNT_DATE_CLOSE']
+    for col in date_columns:
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], errors='coerce')
 
-        # Replace NaN with None for compatibility with SQLAlchemy
-        logger.info("Replacing NaN values with None.")
-        df = df.where(pd.notnull(df), None)
-        logger.info("NaN values replaced with None.")
+    # Replace NaN with None for SQLAlchemy compatibility
+    df = df.where(pd.notnull(df), None)
 
-        # Ensure the DataFrame has the primary key column
-        if 'DOC_IDT' not in df.columns:
-            logger.warning("DOC_IDT column not found in the DataFrame. Skipping insertion.")
-            return
+    # Filter out rows without 'DOC_IDT'
+    df = df[df['DOC_IDT'].notnull()]
 
-        # Filter out rows without primary key values
-        logger.info(f"Filtering rows without DOC_IDT values. Initial row count: {len(df)}.")
-        df = df[df['DOC_IDT'].notnull()]
-        logger.info(f"Row count after filtering: {len(df)}.")
+    logger.info(f"Preprocessing complete. Valid rows count: {len(df)}.")
+    return df
 
-        if df.empty:
-            logger.info("No valid records to insert after filtering. Skipping insertion.")
-            return
 
-        logger.info(f"Preparing to deduplicate {len(df)} records based on DOC_IDT.")
-
-        # Deduplicate by checking existing records in the database
-        doc_ids_to_check = df['DOC_IDT'].unique().tolist()
-        logger.info(f"Unique DOC_IDTs to check in the database: {doc_ids_to_check[:10]}... (showing first 10)")
-
-        async with get_session() as session:
-            # Fetch existing DOC_IDTs in the database
-            existing_query = select(Transaction.DOC_IDT).where(Transaction.DOC_IDT.in_(doc_ids_to_check))
-            logger.info(f"Executing query to fetch existing DOC_IDTs: {existing_query}")
+# Enhanced function to fetch existing DOC_IDT values with detailed logging
+async def get_existing_doc_ids(doc_ids: list) -> set:
+    """Fetch existing DOC_IDT values from the database with detailed logging."""
+    logger.info(f"Fetching existing DOC_IDT values for {len(doc_ids)} records from the database.")
+    async with get_session() as session:
+        try:
+            existing_query = select(Transaction.DOC_IDT).where(Transaction.DOC_IDT.in_(doc_ids))
             result = await session.execute(existing_query)
-            existing_doc_ids = {row[0] for row in result}
+            existing_ids = {row[0] for row in result}
+            logger.debug(f"Fetched existing DOC_IDT values: {existing_ids}")
+            return existing_ids
+        except Exception as e:
+            logger.error(f"Error fetching existing DOC_IDT values: {e}")
+            return set()
 
-        logger.info(f"Found {len(existing_doc_ids)} existing records in the database.")
 
-        # Filter out existing records
-        logger.info(f"Filtering out existing DOC_IDTs. DataFrame size before: {len(df)}.")
-        unique_records_df = df[~df['DOC_IDT'].isin(existing_doc_ids)]
-        logger.info(f"DataFrame size after filtering: {len(unique_records_df)}.")
+# Improved filtering with logging
+def filter_new_records(df: pd.DataFrame, existing_ids: set) -> pd.DataFrame:
+    """Filter out rows with existing DOC_IDT values, with detailed logging."""
+    initial_count = len(df)
+    logger.info(f"Starting filtering process. Initial DataFrame size: {initial_count}.")
 
-        # If no unique records, exit early
-        if unique_records_df.empty:
-            logger.info("No new records to insert after deduplication. Exiting.")
+    # Log the type of existing_ids to ensure it's a set of strings
+    logger.info(f"Existing DOC_IDT values fetched from DB: {len(existing_ids)}")
+    logger.debug(f"Type of existing_ids: {type(existing_ids)}")
+
+    # Ensure existing_ids is a set of strings (in case it's not)
+    existing_ids = {str(id) for id in existing_ids}
+    logger.debug(f"Converted existing_ids to string type: {existing_ids}")
+
+    filtered_rows = []
+    for index, row in df.iterrows():
+        doc_id = row['DOC_IDT']
+
+        # Log the type of DOC_IDT to ensure it's a string
+        logger.debug(f"Processing row {index} with DOC_IDT: {doc_id} (Type: {type(doc_id)})")
+
+        # Ensure DOC_IDT is treated as a string for accurate comparison
+        if isinstance(doc_id, str):
+            doc_id = doc_id.strip()  # Remove any potential leading/trailing whitespace
+            logger.debug(f"Stripped DOC_IDT: {doc_id}")
+        else:
+            logger.warning(f"DOC_IDT in row {index} is not a string, converting to string.")
+            doc_id = str(doc_id)
+
+        if doc_id in existing_ids:
+            logger.info(f"Skipping existing records...")
+        else:
+            logger.debug(f"New record identified: DOC_IDT={doc_id}, Row={row.to_dict()}")
+            filtered_rows.append(row)
+
+    df_filtered = pd.DataFrame(filtered_rows, columns=df.columns)
+    logger.info(f"Filtered out {initial_count - len(df_filtered)} rows. Remaining rows: {len(df_filtered)}.")
+    return df_filtered
+
+
+# Insert records with logging
+async def insert_unique_records(df: pd.DataFrame):
+    """Insert unique records into the database."""
+    try:
+        records = []
+        # Convert DataFrame rows to TransactionBase models
+        for index, row in df.iterrows():
+            transaction_data = row.to_dict()
+            logger.debug(f"Row {index} data types: {[(k, type(v)) for k, v in transaction_data.items()]}")
+            try:
+                # Create a Pydantic model instance (Validation)
+                try:
+                    transaction = TransactionBase(**transaction_data)
+                except ValidationError as e:
+                    logger.error(f"Validation error for row {index}: {e.errors()}")
+                    continue
+                records.append(transaction.dict())  # Get dictionary representation for insertion
+            except Exception as e:
+                logger.error(f"Error creating Pydantic model for row {index}: {e}")
+                continue
+
+        if not records:
+            logger.warning("No valid records to insert.")
             return
 
-        # Convert unique records to a list of dictionaries for bulk insert
-        new_records_dict = unique_records_df.to_dict(orient='records')
-        logger.info(f"Prepared {len(new_records_dict)} records for insertion.")
+        logger.debug(f"Preparing to insert records: {records}")
 
-        # Create the bulk insert query with on_duplicate_key_update to handle duplicates
-        stmt = insert(Transaction).values(new_records_dict)
+        # Generate the SQL statement
+        stmt = insert(Transaction).values(records)
         stmt = stmt.on_duplicate_key_update(
             {col.name: col for col in stmt.inserted}
         )
-        logger.info(f"Generated bulk insert statement: {stmt}")
 
-        # Perform the bulk insert
         async with get_session() as session:
-            logger.info(f"Executing bulk insert of {len(new_records_dict)} records.")
             await session.execute(stmt)
             await session.commit()
 
-        logger.info(f"{len(new_records_dict)} unique records inserted successfully.")
-
+        logger.info(f"Inserted {len(records)} new records.")
     except Exception as e:
-        logger.error(f"Error during insertion: {e}")
+        logger.error(f"Error during unique records insertion: {e}")
+
+# Main function with logging and error handling
+async def process_and_insert_data(df: pd.DataFrame):
+    """Main function to process and insert data into the database."""
+    try:
+        logger.info("Starting data insertion process.")
+
+        # Preprocess the data
+        df = await preprocess_data(df)
+        if df.empty:
+            logger.info("No valid records to process. Exiting.")
+            return
+
+        # Get unique DOC_IDT values to check in the database
+        unique_ids = df['DOC_IDT'].unique().tolist()
+        logger.info(f"Extracted {len(unique_ids)} unique DOC_IDT values for deduplication.")
+
+        # Fetch existing DOC_IDT values from the database
+        existing_ids = await get_existing_doc_ids(unique_ids)
+        logger.info(f"Found {len(existing_ids)} existing DOC_IDT values in the database.")
+
+        # Filter out existing records
+        logger.info("Starting record filtering...")
+        df_new = filter_new_records(df, existing_ids)
+        if df_new.empty:
+            logger.info("No new records to insert after filtering. Exiting.")
+            return
+
+        # Insert new records
+        logger.info(f"Inserting {len(df_new)} new records into the database.")
+        await insert_unique_records(df_new)
+        logger.info("Data insertion process completed successfully.")
+    except Exception as e:
+        logger.error(f"Error during the insertion process: {e}")
 
 
-# Function to fetch data from the database
+# Function to fetch data from the database (remains unchanged)
 async def fetch_transactions(
         skip: int,
         limit: int,
@@ -247,11 +313,11 @@ async def fetch_transactions(
         return []
 
 
-#Processing CSV Data and Loading it before inserting it into DB
+# Function to process and load data from CSV file
 async def process_and_load_data(file_path):
     df = parse_csv(file_path)
     if not df.empty:
         deduplicated_df = await deduplicate_data(df, engine)
-        await insert_to_db(deduplicated_df)
+        await process_and_insert_data(deduplicated_df)
     else:
         logger.warning("Parsed DataFrame is empty. Skipping insertion.")

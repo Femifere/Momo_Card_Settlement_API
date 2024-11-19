@@ -32,6 +32,19 @@ def parse_csv(file_path, default_date='1900-01-01'):
                         'ACCOUNT_DATE_CLOSE']
         numeric_columns = ['AMOUNT', 'TRANS_AMOUNT', 'SETTLEMENT_FX_RATE', 'TRANSACTION_FX_RATE', 'TRANS_CASH_AMOUNT',
                            'SETTL_CASH_AMOUNT', 'LOCAL_AMOUNT']
+        string_columns = [
+            'CONTRACT_NUMBER', 'DOC_IDT', 'PREVIOUS_DOC_IDT', 'CORRECTED_DOC_IDT', 'CORRECTION_TYPE',
+            'AUTH_CODE', 'DIRECTION', 'TRANS_REASON', 'TRANS_RRN', 'TRANS_RESPONSE_CODE', 'TRANS_SRN',
+            'RBS_NUMBER', 'PARENT_CONTRACT_NUMBER'
+        ]
+
+        for col in string_columns:
+            if col in df.columns:
+                df[col] = df[col].astype(str)  # Convert these columns to strings explicitly
+
+        for col in string_columns:
+            if col in df.columns:
+                df[col] = df[col].apply(lambda x: str(x).rstrip('.0') if isinstance(x, float) else str(x))
 
         for col in date_columns:
             if col in df.columns:
@@ -42,10 +55,13 @@ def parse_csv(file_path, default_date='1900-01-01'):
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')  # Convert to numeric, coerce invalid entries to NaN
 
+        df['AMOUNT'] = pd.to_numeric(df['AMOUNT'], errors='coerce')
+        df['BANKING_DATE'] = pd.to_datetime(df['BANKING_DATE'], format='%d-%b-%y', errors='coerce')
+
         # Handle columns with special formats like JSON, lists, or nested data
         if 'CONDITION_LIST' in df.columns:
             df['CONDITION_LIST'] = df['CONDITION_LIST'].apply(
-                lambda x: x.split(';') if isinstance(x, str) else []
+                lambda x: ";".join(x) if isinstance(x, list) else str(x)
             )
 
         # Drop rows with missing essential identifiers (e.g., 'DOC_IDT')
