@@ -97,7 +97,7 @@ async def deduplicate_data(df, engine):
 
 #Give default date to NaT date fields for proper conversion
 if __name__ == "__main__":
-    file_path = "C:\\Users\\fresh\\Documents\\Momo Card Settlement Project\\myenv\\data\\MOMORW_TRANSACTION_DUMP_20241031.csv"
+    file_path = "data\\MOMORW_TRANSACTION_DUMP_20241031.csv"
     df = parse_csv(file_path, default_date='1970-01-01')
     if not df.empty:
         logging.info(f"Parsed DataFrame: {df.head()}")

@@ -3,12 +3,28 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.future import select
+from sqlalchemy.dialects.mysql import insert
 from sqlalchemy import Column, Integer, String, Date, DECIMAL, CHAR, Text
 from contextlib import asynccontextmanager
 import pandas as pd
 import logging
 from utils.parse_transform import parse_csv, deduplicate_data
 import asyncio
+import logging
+import sys
+
+# Configure the logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ],
+)
+
+# Get a logger instance
+logger = logging.getLogger(__name__)
+
 
 #using aiomysql driver to connect to mySQL Database
 DATABASE_URL = "mysql+aiomysql://root@127.0.0.1:3306/momo_card_settlement"
@@ -109,31 +125,92 @@ async def get_session():
         try:
             yield session
         except Exception as e:
-            logging.error(f"Error during session: {e}")
+            logger.error(f"Error during session: {e}")
             raise
 
 
-#Function to insert CSV data into database
+# Function to insert CSV data into the database
 async def insert_to_db(df: pd.DataFrame):
     try:
+        logger.info("Starting the insertion process.")
+
+        # Convert date columns to datetime
         date_columns = ['BANKING_DATE', 'ACCOUNT_DATE_CLOSE']
         for col in date_columns:
-            df[col] = pd.to_datetime(df[col], errors='coerce')
+            if col in df.columns:
+                logger.info(f"Converting column '{col}' to datetime.")
+                df[col] = pd.to_datetime(df[col], errors='coerce')
+                logger.info(f"Column '{col}' converted to datetime.")
+        logger.info("Date columns converted to datetime.")
 
+        # Replace NaN with None for compatibility with SQLAlchemy
+        logger.info("Replacing NaN values with None.")
         df = df.where(pd.notnull(df), None)
-        records = df.to_dict(orient='records')
-        transactions = [Transaction(**record) for record in records if record['DOC_IDT']]
+        logger.info("NaN values replaced with None.")
+
+        # Ensure the DataFrame has the primary key column
+        if 'DOC_IDT' not in df.columns:
+            logger.warning("DOC_IDT column not found in the DataFrame. Skipping insertion.")
+            return
+
+        # Filter out rows without primary key values
+        logger.info(f"Filtering rows without DOC_IDT values. Initial row count: {len(df)}.")
+        df = df[df['DOC_IDT'].notnull()]
+        logger.info(f"Row count after filtering: {len(df)}.")
+
+        if df.empty:
+            logger.info("No valid records to insert after filtering. Skipping insertion.")
+            return
+
+        logger.info(f"Preparing to deduplicate {len(df)} records based on DOC_IDT.")
+
+        # Deduplicate by checking existing records in the database
+        doc_ids_to_check = df['DOC_IDT'].unique().tolist()
+        logger.info(f"Unique DOC_IDTs to check in the database: {doc_ids_to_check[:10]}... (showing first 10)")
 
         async with get_session() as session:
-            async with session.begin():  # Explicit transaction management
-                session.add_all(transactions)
+            # Fetch existing DOC_IDTs in the database
+            existing_query = select(Transaction.DOC_IDT).where(Transaction.DOC_IDT.in_(doc_ids_to_check))
+            logger.info(f"Executing query to fetch existing DOC_IDTs: {existing_query}")
+            result = await session.execute(existing_query)
+            existing_doc_ids = {row[0] for row in result}
+
+        logger.info(f"Found {len(existing_doc_ids)} existing records in the database.")
+
+        # Filter out existing records
+        logger.info(f"Filtering out existing DOC_IDTs. DataFrame size before: {len(df)}.")
+        unique_records_df = df[~df['DOC_IDT'].isin(existing_doc_ids)]
+        logger.info(f"DataFrame size after filtering: {len(unique_records_df)}.")
+
+        # If no unique records, exit early
+        if unique_records_df.empty:
+            logger.info("No new records to insert after deduplication. Exiting.")
+            return
+
+        # Convert unique records to a list of dictionaries for bulk insert
+        new_records_dict = unique_records_df.to_dict(orient='records')
+        logger.info(f"Prepared {len(new_records_dict)} records for insertion.")
+
+        # Create the bulk insert query with on_duplicate_key_update to handle duplicates
+        stmt = insert(Transaction).values(new_records_dict)
+        stmt = stmt.on_duplicate_key_update(
+            {col.name: col for col in stmt.inserted}
+        )
+        logger.info(f"Generated bulk insert statement: {stmt}")
+
+        # Perform the bulk insert
+        async with get_session() as session:
+            logger.info(f"Executing bulk insert of {len(new_records_dict)} records.")
+            await session.execute(stmt)
             await session.commit()
-        logging.info(f"{len(transactions)} records inserted successfully.")
+
+        logger.info(f"{len(new_records_dict)} unique records inserted successfully.")
+
     except Exception as e:
-        logging.error(f"Error inserting data: {e}")
+        logger.error(f"Error during insertion: {e}")
 
 
-#Function to Fetch data from the database
+# Function to fetch data from the database
 async def fetch_transactions(
         skip: int,
         limit: int,
@@ -142,26 +219,32 @@ async def fetch_transactions(
         sort_by: str = None,
         sort_order: str = "asc"
 ) -> list[Transaction]:
-    query = select(Transaction).offset(skip).limit(limit)
+    try:
+        query = select(Transaction).offset(skip).limit(limit)
 
-    # Apply filtering if requested
-    if filter_by and filter_value:
-        filter_condition = getattr(Transaction, filter_by) == filter_value
-        query = query.where(filter_condition)
+        # Apply filtering if requested
+        if filter_by and filter_value:
+            filter_condition = getattr(Transaction, filter_by) == filter_value
+            query = query.where(filter_condition)
 
-    # Apply sorting if requested
-    if sort_by:
-        if sort_order == "asc":
-            query = query.order_by(getattr(Transaction, sort_by).asc())
-        else:
-            query = query.order_by(getattr(Transaction, sort_by).desc())
+        # Apply sorting if requested
+        if sort_by:
+            if sort_order == "asc":
+                query = query.order_by(getattr(Transaction, sort_by).asc())
+            else:
+                query = query.order_by(getattr(Transaction, sort_by).desc())
 
-    # Execution of the query
-    async with get_session() as session:
-        result = await session.execute(query)
-        transactions = result.scalars().all()
+        # Execution of the query
+        async with get_session() as session:
+            result = await session.execute(query)
+            transactions = result.scalars().all()
 
-    return transactions
+        logger.info(f"Fetched {len(transactions)} transactions from the database.")
+        return transactions
+
+    except Exception as e:
+        logger.error(f"Error fetching transactions: {e}")
+        return []
 
 
 #Processing CSV Data and Loading it before inserting it into DB
@@ -171,4 +254,4 @@ async def process_and_load_data(file_path):
         deduplicated_df = await deduplicate_data(df, engine)
         await insert_to_db(deduplicated_df)
     else:
-        logging.warning("Parsed DataFrame is empty. Skipping insertion.")
+        logger.warning("Parsed DataFrame is empty. Skipping insertion.")

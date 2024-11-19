@@ -5,8 +5,8 @@ import shutil
 import pandas as pd
 
 #Local Path and Repository path
-LOCAL_PATH = r"C:\Users\fresh\Documents\Momo Card Settlement Project\MOMORW_TRANSACTION_DUMP_20241031.csv"
-LOCAL_SAVE_PATH = r"C:\Users\fresh\Documents\Momo Card Settlement Project\data"
+LOCAL_PATH = r"MOMORW_TRANSACTION_DUMP_20241031.csv"
+LOCAL_SAVE_PATH = r"data/"
 
 #Function to fetch files from the repository
 async def fetch_files():

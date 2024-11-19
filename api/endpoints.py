@@ -1,11 +1,16 @@
 #endpoints.py
-from fastapi import APIRouter, HTTPException, Depends, Security, Query
-from sqlalchemy.orm import Session
-from utils.db_operations import get_session, Transaction, fetch_transactions
-from api.schemas import TransactionBase
-from api.authorization import verify_token
+import json
+import os
+
+from fastapi import APIRouter, HTTPException, Query, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import logging
+from passlib.context import CryptContext
+from pydantic import BaseModel, EmailStr, Field, validator
+
+from api.authorization import verify_token
+from api.schemas import TransactionBase
+from utils.db_operations import fetch_transactions
+from api.shared import load_users, save_users
 
 router = APIRouter()
 bearer_scheme = HTTPBearer()
@@ -27,37 +32,74 @@ FILTER_COLUMNS = [
 
 SORT_COLUMNS = FILTER_COLUMNS.copy()  # Same as filter columns for sorting
 
-#Get Transactions Endpoint
+# File location for secure storage
+USERS_FILE = r"data\users.json"
+
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Initialize users file if it doesn't exist
+def initialize_users_file():
+    if not os.path.exists(USERS_FILE):
+        with open(USERS_FILE, "w") as file:
+            json.dump({}, file)
+
+initialize_users_file()
+
+# Load all users
+def load_users():
+    with open(USERS_FILE, "r") as file:
+        return json.load(file)
+
+# Save users
+def save_users(users):
+    with open(USERS_FILE, "w") as file:
+        json.dump(users, file)
+
+# User registration model
+class UserRegistration(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+
+    @validator("password")
+    def validate_password(cls, value):
+        if not any(char.isdigit() for char in value):
+            raise ValueError("Password must contain at least one number.")
+        if not any(char.isalpha() for char in value):
+            raise ValueError("Password must contain at least one letter.")
+        return value
+
+# Get Transactions Endpoint
 @router.get("/transactions", response_model=list[TransactionBase], tags=["Transactions"])
 async def get_transactions(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
-    filter_by: str = Query(None, description="Column to filter by", enum=FILTER_COLUMNS),
-    filter_value: str = Query(None, description="Value to filter with"),
-    sort_by: str = Query(None, description="Column to sort by", enum=SORT_COLUMNS),
-    sort_order: str = Query("asc", regex="^(asc|desc)$", description="Sort order: 'asc' or 'desc'"),
+    filter_by: str = Query(None, enum=FILTER_COLUMNS),
+    filter_value: str = Query(None),
+    sort_by: str = Query(None, enum=SORT_COLUMNS),
+    sort_order: str = Query("asc", regex="^(asc|desc)$"),
     credentials: HTTPAuthorizationCredentials = Security(bearer_scheme),
 ):
-    """
-    Retrieve paginated, filtered, and sorted transactions. Requires valid token.
-    """
     token = credentials.credentials
     try:
         verify_token(token)
     except Exception as e:
-        logging.error(f"Token verification failed: {e}")
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
     try:
         transactions = await fetch_transactions(
-            skip=skip,
-            limit=limit,
-            filter_by=filter_by,
-            filter_value=filter_value,
-            sort_by=sort_by,
-            sort_order=sort_order,
+            skip=skip, limit=limit, filter_by=filter_by, filter_value=filter_value, sort_by=sort_by, sort_order=sort_order
         )
         return [TransactionBase.from_orm(tx) for tx in transactions]
     except Exception as e:
-        logging.error(f"Error fetching transactions: {e}")
         raise HTTPException(status_code=500, detail="Database error")
+
+# Register User Endpoint
+@router.post("/register", tags=["User Management"])
+async def register_user(user: UserRegistration):
+    users = load_users()
+    if user.email in users:
+        raise HTTPException(status_code=400, detail="User already exists.")
+    users[user.email] = {"password": pwd_context.hash(user.password)}
+    save_users(users)
+    return {"message": "User registered successfully!"}
