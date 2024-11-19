@@ -1,16 +1,11 @@
-#endpoints.py
-import json
-import os
-
-from fastapi import APIRouter, HTTPException, Query, Security
+from fastapi import APIRouter, HTTPException, Query, Security, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from passlib.context import CryptContext
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr, Field, validator
-
-from api.authorization import verify_token
+from api.authorization import create_access_token, verify_token, authenticate_user, pwd_context
+from api.shared import save_users, load_users
 from api.schemas import TransactionBase
 from utils.db_operations import fetch_transactions
-from api.shared import load_users, save_users
 
 router = APIRouter()
 bearer_scheme = HTTPBearer()
@@ -30,31 +25,12 @@ FILTER_COLUMNS = [
     "TRANS_CASH_AMOUNT", "TRANS_CASH_CURR", "SETTL_CASH_AMOUNT", "SETTL_CASH_CURR", "BASE_CURRENCY", "PARENT_CONTRACT_NUMBER"
 ]
 
-SORT_COLUMNS = FILTER_COLUMNS.copy()  # Same as filter columns for sorting
+SORT_COLUMNS = FILTER_COLUMNS.copy()
 
-# File location for secure storage
-USERS_FILE = r"data\users.json"
-
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-# Initialize users file if it doesn't exist
-def initialize_users_file():
-    if not os.path.exists(USERS_FILE):
-        with open(USERS_FILE, "w") as file:
-            json.dump({}, file)
-
-initialize_users_file()
-
-# Load all users
-def load_users():
-    with open(USERS_FILE, "r") as file:
-        return json.load(file)
-
-# Save users
-def save_users(users):
-    with open(USERS_FILE, "w") as file:
-        json.dump(users, file)
+# User login model
+class UserLogin(BaseModel):
+    username: str
+    password: str
 
 # User registration model
 class UserRegistration(BaseModel):
@@ -69,37 +45,51 @@ class UserRegistration(BaseModel):
             raise ValueError("Password must contain at least one letter.")
         return value
 
-# Get Transactions Endpoint
-@router.get("/transactions", response_model=list[TransactionBase], tags=["Transactions"])
-async def get_transactions(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(10, ge=1, le=100),
-    filter_by: str = Query(None, enum=FILTER_COLUMNS),
-    filter_value: str = Query(None),
-    sort_by: str = Query(None, enum=SORT_COLUMNS),
-    sort_order: str = Query("asc", regex="^(asc|desc)$"),
-    credentials: HTTPAuthorizationCredentials = Security(bearer_scheme),
-):
-    token = credentials.credentials
-    try:
-        verify_token(token)
-    except Exception as e:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+# Health check
+@router.get("/", tags=["Health Check"])
+async def health_check():
+    return {"status": "ok"}
 
-    try:
-        transactions = await fetch_transactions(
-            skip=skip, limit=limit, filter_by=filter_by, filter_value=filter_value, sort_by=sort_by, sort_order=sort_order
-        )
-        return [TransactionBase.from_orm(tx) for tx in transactions]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Database error")
+# Token generation endpoint
+@router.post("/login", tags=["Authentication"])
+async def login(user: UserLogin = Body(...)):
+    authenticated_user = authenticate_user(user.username, user.password)
+    if not authenticated_user:
+        raise HTTPException(status_code=401, detail="Invalid username or password.")
 
-# Register User Endpoint
+    token = create_access_token({"sub": authenticated_user["username"]})
+    return {"access_token": token, "token_type": "Bearer"}
+
+# User registration endpoint
 @router.post("/register", tags=["User Management"])
-async def register_user(user: UserRegistration):
+async def register_user(user: UserRegistration = Body(...)):
     users = load_users()
     if user.email in users:
         raise HTTPException(status_code=400, detail="User already exists.")
     users[user.email] = {"password": pwd_context.hash(user.password)}
     save_users(users)
     return {"message": "User registered successfully!"}
+
+
+# Get Transactions Endpoint with redirect handling
+@router.get("/transactions", response_model=list[TransactionBase], tags=["Transactions"])
+async def get_transactions(
+        skip: int = Query(0, ge=0),
+        limit: int = Query(10, ge=1, le=100),
+        filter_by: str = Query(None, enum=FILTER_COLUMNS),
+        filter_value: str = Query(None),
+        sort_by: str = Query(None, enum=SORT_COLUMNS),
+        sort_order: str = Query("asc", regex="^(asc|desc)$"),
+        credentials: HTTPAuthorizationCredentials = Security(bearer_scheme),
+):
+    """
+    Endpoint to fetch transactions with the ability to follow redirects by client-side tools (e.g., Postman, curl).
+    Ensure that your client settings are configured to follow redirects (Postman will do this by default).
+    """
+    token = credentials.credentials
+    verify_token(token)  # Will raise an exception if invalid
+
+    transactions = await fetch_transactions(
+        skip=skip, limit=limit, filter_by=filter_by, filter_value=filter_value, sort_by=sort_by, sort_order=sort_order
+    )
+    return [TransactionBase.from_orm(tx) for tx in transactions]

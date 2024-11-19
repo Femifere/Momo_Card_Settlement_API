@@ -60,17 +60,6 @@ app = FastAPI(lifespan=lifespan)
 #Included endpoints
 app.include_router(api_router, prefix="/api")
 
-#Function for Authentication
-@app.post("/api/token", tags=["Authentication"])
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    """
-    Obtain an access token by providing valid username and password.
-    """
-    user = authenticate_user(form_data.username, form_data.password)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid username or password")
-    access_token = create_access_token(data={"sub": user["username"]})
-    return {"access_token": access_token, "token_type": "bearer"}
 
 #Root
 @app.get("/", tags=["Root"])
