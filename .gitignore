@@ -1,12 +1,93 @@
-# Default ignored files
-/shelf/
-/workspace.xml
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
 
-Momo Card Settlement Project\.idea
-Momo Card Settlement Project\.pytest_cache
-Momo Card Settlement Project\.vscode
-Momo Card Settlement Project\myenv\Scripts
-Momo Card Settlement Project\myenv\share
-Momo Card Settlement Project\myenv\__pycache__
-Momo Card Settlement Project\myenv\Lib
-Momo Card Settlement Project\myenv\Include
+# Virtual environment
+myenv/
+.env/
+.venv/
+
+# C extensions
+*.so
+
+# Packages
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+*.egg-info/
+.installed.cfg
+*.egg-info/
+*.whl
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+*.cover
+coverage.xml
+*.coveragerc
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff
+*.log
+local_settings.py
+db.sqlite3
+
+# Flask and FastAPI stuff
+instance/
+.webassets-cache
+
+# Scrapy stuff
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyCharm
+.idea/
+
+# VSCode
+.vscode/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Profiling data
+.prof
+
+# CSV data dump files
+*.csv
+
+# Miscellaneous
+*.log
+*.bak
+*.swp
+
+# Environment variable files
+.env
+*.env
