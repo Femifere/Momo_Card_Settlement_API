@@ -10,10 +10,10 @@ import logging
 from utils.parse_transform import parse_csv, deduplicate_data
 import asyncio
 
-# Updated to use aiomysql driver
+#using aiomysql driver to connect to mySQL Database
 DATABASE_URL = "mysql+aiomysql://root@127.0.0.1:3306/momo_card_settlement"
 
-# Configure async SQLAlchemy engine and session
+# Configured async SQLAlchemy engine and session
 engine = create_async_engine(DATABASE_URL, pool_size=10, max_overflow=20)
 AsyncSessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 Base = declarative_base()
@@ -102,6 +102,7 @@ def create_tables():
 create_tables()
 
 
+#Session
 @asynccontextmanager
 async def get_session():
     async with AsyncSessionLocal() as session:
@@ -112,6 +113,7 @@ async def get_session():
             raise
 
 
+#Function to insert CSV data into database
 async def insert_to_db(df: pd.DataFrame):
     try:
         date_columns = ['BANKING_DATE', 'ACCOUNT_DATE_CLOSE']
@@ -131,6 +133,7 @@ async def insert_to_db(df: pd.DataFrame):
         logging.error(f"Error inserting data: {e}")
 
 
+#Function to Fetch data from the database
 async def fetch_transactions(
         skip: int,
         limit: int,
@@ -141,19 +144,19 @@ async def fetch_transactions(
 ) -> list[Transaction]:
     query = select(Transaction).offset(skip).limit(limit)
 
-    # Apply filtering if provided
+    # Apply filtering if requested
     if filter_by and filter_value:
         filter_condition = getattr(Transaction, filter_by) == filter_value
         query = query.where(filter_condition)
 
-    # Apply sorting if provided
+    # Apply sorting if requested
     if sort_by:
         if sort_order == "asc":
             query = query.order_by(getattr(Transaction, sort_by).asc())
         else:
             query = query.order_by(getattr(Transaction, sort_by).desc())
 
-    # Execute the query
+    # Execution of the query
     async with get_session() as session:
         result = await session.execute(query)
         transactions = result.scalars().all()
@@ -161,6 +164,7 @@ async def fetch_transactions(
     return transactions
 
 
+#Processing CSV Data and Loading it before inserting it into DB
 async def process_and_load_data(file_path):
     df = parse_csv(file_path)
     if not df.empty:

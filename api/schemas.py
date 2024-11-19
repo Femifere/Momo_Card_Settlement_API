@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from datetime import date
 from decimal import Decimal
 
+# Transaction model
 class TransactionBase(BaseModel):
     INSTITUTION_BRANCH_CODE: int
     BANKING_DATE: date

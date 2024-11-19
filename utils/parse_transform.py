@@ -3,9 +3,10 @@ import pandas as pd
 import logging
 from sqlalchemy.sql import text
 
+#Added Logger
 logging.basicConfig(level=logging.INFO)
 
-
+#ANALYZING AND PARSING THE CSV
 def parse_csv(file_path, default_date='1900-01-01'):
     try:
         logging.info(f"Processing file: {file_path}")
@@ -68,7 +69,7 @@ def parse_csv(file_path, default_date='1900-01-01'):
         return pd.DataFrame()  # Return an empty DataFrame on error
 
 
-
+#Function to prevent duplicate data
 async def deduplicate_data(df, engine):
     try:
         # Use an asynchronous connection
@@ -94,7 +95,7 @@ async def deduplicate_data(df, engine):
         return df
 
 
-# Example usage
+#Give default date to NaT date fields for proper conversion
 if __name__ == "__main__":
     file_path = "C:\\Users\\fresh\\Documents\\Momo Card Settlement Project\\myenv\\data\\MOMORW_TRANSACTION_DUMP_20241031.csv"
     df = parse_csv(file_path, default_date='1970-01-01')

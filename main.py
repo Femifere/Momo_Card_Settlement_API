@@ -17,8 +17,10 @@ from utils.fetch_files import fetch_files
 logger = logging.getLogger("uvicorn")
 logging.basicConfig(level=logging.INFO)
 
+#Configure task executor
 executor = ThreadPoolExecutor()
 
+#Set up Lifespan
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global task
@@ -36,6 +38,7 @@ async def lifespan(app: FastAPI):
             logger.info("Periodic task cancelled.")
 
 
+#Function to run background recurring tasks before startup
 async def periodic_task():
     while True:
         try:
@@ -51,10 +54,13 @@ async def periodic_task():
             logger.error(f"Error during periodic task: {e}")
         await asyncio.sleep(3600)
 
+#Initialised API
 app = FastAPI(lifespan=lifespan)
 
+#Included endpoints
 app.include_router(api_router, prefix="/api")
 
+#Function for Authentication
 @app.post("/api/token", tags=["Authentication"])
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(form_data.username, form_data.password)
@@ -63,6 +69,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     access_token = create_access_token(data={"sub": user['username']})
     return {"access_token": access_token, "token_type": "bearer"}
 
+#Root
 @app.get("/", tags=["Root"])
 async def root():
     async with get_session() as session:
@@ -74,6 +81,7 @@ async def root():
     }
 
 
+#Defining where uvicorn should load main
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=8000, log_level="info")

@@ -27,6 +27,7 @@ FILTER_COLUMNS = [
 
 SORT_COLUMNS = FILTER_COLUMNS.copy()  # Same as filter columns for sorting
 
+#Get Transactions Endpoint
 @router.get("/transactions", response_model=list[TransactionBase], tags=["Transactions"])
 async def get_transactions(
     skip: int = Query(0, ge=0),
