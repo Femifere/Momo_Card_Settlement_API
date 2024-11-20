@@ -91,3 +91,5 @@ dmypy.json
 # Environment variable files
 .env
 *.env
+
+data/

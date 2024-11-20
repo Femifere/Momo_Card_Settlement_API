@@ -1,6 +1,8 @@
 from pydantic import BaseModel, condecimal, conint
 from datetime import date
 from typing import Optional
+from dotenv import load_dotenv
+load_dotenv()
 
 # Transaction model
 class TransactionBase(BaseModel):

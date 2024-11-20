@@ -1,16 +1,21 @@
-#Authorization.py
 import os
 import jwt
 from fastapi import HTTPException, status
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
 from api.shared import load_users
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Secret key for token generation
-SECRET_KEY = os.environ.get("SECRET_KEY", os.urandom(32).hex())
+# Fetch the SECRET_KEY from the environment
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY is not set in environment variables.")
 
 # Create access token
 def create_access_token(data: dict):

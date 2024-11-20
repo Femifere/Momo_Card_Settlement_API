@@ -2,6 +2,8 @@
 import pandas as pd
 import logging
 from sqlalchemy.sql import text
+from dotenv import load_dotenv
+load_dotenv()
 
 #Added Logger
 logging.basicConfig(level=logging.INFO)

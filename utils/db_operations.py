@@ -1,5 +1,9 @@
 #db_operations.py
+from dotenv import load_dotenv
+load_dotenv()
+
 import logging
+import os
 from contextlib import asynccontextmanager
 
 import pandas as pd
@@ -21,7 +25,9 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Database configuration
-DATABASE_URL = "mysql+aiomysql://root@127.0.0.1:3306/momo_card_settlement"
+# Load database URL from environment variables
+DATABASE_URL = os.getenv("DATABASE_URL", "mysql+aiomysql://root@127.0.0.1:3306/momo_card_settlement")
+
 engine = create_async_engine(DATABASE_URL, pool_size=10, max_overflow=20)
 AsyncSessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 

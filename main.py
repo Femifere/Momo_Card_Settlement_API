@@ -1,26 +1,31 @@
-#main.py
 import asyncio
+import os
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 
+import uvicorn
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
+from dotenv import load_dotenv
 
 from api.authorization import create_access_token, authenticate_user
 from api.endpoints import router as api_router
 from utils.db_operations import process_and_load_data, get_session, Transaction
 from utils.fetch_files import fetch_files
 
+# Load environment variables
+load_dotenv()
+
 # Configure logger
 logger = logging.getLogger("uvicorn")
 logging.basicConfig(level=logging.INFO)
 
-#Configure task executor
+# Configure task executor
 executor = ThreadPoolExecutor()
 
-#Set up Lifespan
+# Set up Lifespan
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global task
@@ -37,8 +42,7 @@ async def lifespan(app: FastAPI):
         except asyncio.CancelledError:
             logger.info("Periodic task cancelled.")
 
-
-#Function to run background recurring tasks before startup
+# Function to run background recurring tasks before startup
 async def periodic_task():
     while True:
         try:
@@ -54,14 +58,13 @@ async def periodic_task():
             logger.error(f"Error during periodic task: {e}")
         await asyncio.sleep(3600)
 
-#Initialised API
+# Initialize API
 app = FastAPI(lifespan=lifespan)
 
-#Included endpoints
+# Included endpoints
 app.include_router(api_router, prefix="/api")
 
-
-#Root
+# Root
 @app.get("/", tags=["Root"])
 async def root():
     async with get_session() as session:
@@ -72,8 +75,11 @@ async def root():
         "sample_transactions": [tx for tx in transactions]
     }
 
-
-#Defining where uvicorn should load main
+# Define where uvicorn should load main
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, log_level="info")
+    uvicorn.run(
+        "main:app",
+        host=os.getenv("HOST", "127.0.0.1"),  # Using HOST from .env
+        port=int(os.getenv("PORT", 8000)),  # Using PORT from .env
+        log_level=os.getenv("LOG_LEVEL", "info"),  # Using LOG_LEVEL from .env
+    )

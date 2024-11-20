@@ -1,11 +1,14 @@
+from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Query, Security, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr, Field, validator
+
 from api.authorization import create_access_token, verify_token, authenticate_user, pwd_context
-from api.shared import save_users, load_users
 from api.schemas import TransactionBase
+from api.shared import save_users, load_users
 from utils.db_operations import fetch_transactions
+
+load_dotenv()
 
 router = APIRouter()
 bearer_scheme = HTTPBearer()

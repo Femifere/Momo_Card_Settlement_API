@@ -1,12 +1,16 @@
 #fetch_files.py
+from dotenv import load_dotenv
+load_dotenv()
+
 import os
 import logging
 import shutil
 import pandas as pd
 
 #Local Path and Repository path
-LOCAL_PATH = r"MOMORW_TRANSACTION_DUMP_20241031.csv"
-LOCAL_SAVE_PATH = r"data/"
+
+LOCAL_PATH = os.getenv("LOCAL_PATH")
+LOCAL_SAVE_PATH = os.getenv("LOCAL_SAVE_PATH")
 
 #Function to fetch files from the repository
 async def fetch_files():
