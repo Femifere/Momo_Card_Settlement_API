@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: DockerFile
+    container_name: momo_card_app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    environment:
+      DATABASE_URL: mysql+aiomysql://Fere:%40Dharmahikona7612%23@host.docker.internal:3306/maindb
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  db:
+    image: mysql:8.0
+    container_name: momo_card_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: maindb
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  redis:
+    image: redis:alpine
+    container_name: momo_card_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+volumes:
+  db_data:

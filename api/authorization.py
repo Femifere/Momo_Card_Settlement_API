@@ -5,15 +5,20 @@ from datetime import datetime, timedelta
 from passlib.context import CryptContext
 from api.shared import load_users
 from dotenv import load_dotenv
+import logging
 
-# Load environment variables from .env file
-load_dotenv()
+# Specify the path to the .env file
+dotenv_path = "myenv/.env"
+
+# Load environment variables from the specified .env file
+load_dotenv(dotenv_path)
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Fetch the SECRET_KEY from the environment
 SECRET_KEY = os.getenv("SECRET_KEY")
+logging.info(f"This is the Secret Key: {SECRET_KEY}")
 if not SECRET_KEY:
     raise ValueError("SECRET_KEY is not set in environment variables.")
 

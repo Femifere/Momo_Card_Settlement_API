@@ -15,8 +15,11 @@ from api.endpoints import router as api_router
 from utils.db_operations import process_and_load_data, get_session, Transaction
 from utils.fetch_files import fetch_files
 
-# Load environment variables
-load_dotenv()
+# Specify the path to the .env file
+dotenv_path = "myenv/.env"
+
+# Load environment variables from the specified .env file
+load_dotenv(dotenv_path)
 
 # Configure logger
 logger = logging.getLogger("uvicorn")

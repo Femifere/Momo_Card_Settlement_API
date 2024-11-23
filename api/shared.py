@@ -2,7 +2,12 @@ import json
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+
+# Specify the path to the .env file
+dotenv_path = "myenv/.env"
+
+# Load environment variables from the specified .env file
+load_dotenv(dotenv_path)
 
 # Users file path
 USERS_FILE = os.getenv("USERS_FILE", "data/users.json")

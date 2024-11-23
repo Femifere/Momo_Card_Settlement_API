@@ -8,7 +8,11 @@ from api.schemas import TransactionBase
 from api.shared import save_users, load_users
 from utils.db_operations import fetch_transactions
 
-load_dotenv()
+# Specify the path to the .env file
+dotenv_path = "myenv/.env"
+
+# Load environment variables from the specified .env file
+load_dotenv(dotenv_path)
 
 router = APIRouter()
 bearer_scheme = HTTPBearer()

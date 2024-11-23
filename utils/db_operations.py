@@ -1,15 +1,9 @@
-#db_operations.py
-from dotenv import load_dotenv
-load_dotenv()
-
 import logging
 import os
 from contextlib import asynccontextmanager
 
 import pandas as pd
 from pydantic import ValidationError
-
-from api.schemas import TransactionBase
 from sqlalchemy import Column, Integer, String, Date, DECIMAL, CHAR, Text
 from sqlalchemy import insert
 from sqlalchemy.dialects.mysql import insert
@@ -18,6 +12,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.future import select
 from sqlalchemy.orm import sessionmaker
 
+from api.schemas import TransactionBase
 from utils.parse_transform import parse_csv, deduplicate_data
 
 # Configure the logging
@@ -25,8 +20,10 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Database configuration
-# Load database URL from environment variables
-DATABASE_URL = os.getenv("DATABASE_URL", "mysql+aiomysql://root@127.0.0.1:3306/momo_card_settlement")
+# Fetch the database URL directly from environment variables
+DATABASE_URL = os.getenv("DATABASE_URL", "mysql+aiomysql://Fere:%40Dharmahikona7612%23@host.docker.internal:3306/maindb")
+
+
 
 engine = create_async_engine(DATABASE_URL, pool_size=10, max_overflow=20)
 AsyncSessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)

@@ -3,7 +3,11 @@ import pandas as pd
 import logging
 from sqlalchemy.sql import text
 from dotenv import load_dotenv
-load_dotenv()
+# Specify the path to the .env file
+dotenv_path = "myenv/.env"
+
+# Load environment variables from the specified .env file
+load_dotenv(dotenv_path)
 
 #Added Logger
 logging.basicConfig(level=logging.INFO)

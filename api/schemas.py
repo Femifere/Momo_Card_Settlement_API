@@ -2,7 +2,12 @@ from pydantic import BaseModel, condecimal, conint
 from datetime import date
 from typing import Optional
 from dotenv import load_dotenv
-load_dotenv()
+
+# Specify the path to the .env file
+dotenv_path = "myenv/.env"
+
+# Load environment variables from the specified .env file
+load_dotenv(dotenv_path)
 
 # Transaction model
 class TransactionBase(BaseModel):
@@ -20,23 +25,23 @@ class TransactionBase(BaseModel):
     TRANS_DATE: Optional[date] = None
     EFFECTIVE_DATE: Optional[date] = None
     SETTLEMENT_DATE: Optional[date] = None
-    # PREVIOUS_DOC_IDT: Optional[str] = None
-    # CORRECTED_DOC_IDT: Optional[str] = None
-    # CORRECTION_TYPE: Optional[str] = None
+    PREVIOUS_DOC_IDT: Optional[str] = None
+    CORRECTED_DOC_IDT: Optional[str] = None
+    CORRECTION_TYPE: Optional[str] = None
     TRANS_PAYMENT_SCHEME: Optional[str] = None
-    # AUTH_CODE: Optional[str] = None
+    AUTH_CODE: Optional[str] = None
     TRANS_COUNTRY_CODE: Optional[str] = None
     TRANS_CITY: Optional[str] = None
     SETTL_CURRENCY: Optional[conint(ge=0)] = None
     SETTL_AMOUNT: Optional[condecimal(max_digits=18, decimal_places=2)] = None
-    # DIRECTION: Optional[str] = None
+    DIRECTION: Optional[str] = None
     LOCAL_AMOUNT: Optional[condecimal(max_digits=18, decimal_places=2)] = None
-    # TRANS_REASON: Optional[str] = None
-    # TRANS_DETAILS: Optional[str] = None
-    # TRANS_RRN: Optional[str] = None
-    # TRANS_ARN: Optional[str] = None
-    #TRANS_RESPONSE_CODE: Optional[str] = None
-    #TRANS_SRN: Optional[str] = None
+    TRANS_REASON: Optional[str] = None
+    TRANS_DETAILS: Optional[str] = None
+    TRANS_RRN: Optional[str] = None
+    TRANS_ARN: Optional[str] = None
+    TRANS_RESPONSE_CODE: Optional[str] = None
+    TRANS_SRN: Optional[str] = None
     TRANS_MCC: Optional[conint(ge=0)] = None
     SOURCE_CHANNEL: Optional[str] = None
     TARGET_CHANNEL: Optional[str] = None
@@ -66,7 +71,7 @@ class TransactionBase(BaseModel):
     ACCOUNT_DATE_CLOSE: Optional[date] = None
     SETTLEMENT_FX_RATE: Optional[condecimal(max_digits=18, decimal_places=6)] = None
     TRANSACTION_FX_RATE: Optional[condecimal(max_digits=18, decimal_places=6)] = None
-    #RBS_NUMBER: Optional[str] = None
+    RBS_NUMBER: Optional[str] = None
     TRANS_CASH_AMOUNT: Optional[condecimal(max_digits=18, decimal_places=2)] = None
     TRANS_CASH_CURR: Optional[conint(ge=0)] = None
     SETTL_CASH_AMOUNT: Optional[condecimal(max_digits=18, decimal_places=2)] = None
@@ -74,16 +79,16 @@ class TransactionBase(BaseModel):
     BASE_CURRENCY: Optional[conint(ge=0)] = None
     PARENT_CONTRACT_NUMBER: Optional[str] = None
 
-    PREVIOUS_DOC_IDT: Optional[str] = ''
-    CORRECTED_DOC_IDT: Optional[str] = ''
-    CORRECTION_TYPE: Optional[str] = ''
-    AUTH_CODE: Optional[str] = ''
-    DIRECTION: Optional[str] = ''
-    TRANS_REASON: Optional[str] = ''
-    TRANS_RRN: Optional[str] = ''
-    TRANS_RESPONSE_CODE: Optional[str] = ''
-    TRANS_SRN: Optional[str] = ''
-    RBS_NUMBER: Optional[str] = ''
+    # PREVIOUS_DOC_IDT: Optional[str] = ''
+    # CORRECTED_DOC_IDT: Optional[str] = ''
+    # CORRECTION_TYPE: Optional[str] = ''
+    # AUTH_CODE: Optional[str] = ''
+    # DIRECTION: Optional[str] = ''
+    # TRANS_REASON: Optional[str] = ''
+    # TRANS_RRN: Optional[str] = ''
+    # TRANS_RESPONSE_CODE: Optional[str] = ''
+    # TRANS_SRN: Optional[str] = ''
+    # RBS_NUMBER: Optional[str] = ''
 
     class Config:
         from_attributes = True

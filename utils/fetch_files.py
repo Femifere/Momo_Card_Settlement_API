@@ -1,6 +1,10 @@
 #fetch_files.py
 from dotenv import load_dotenv
-load_dotenv()
+# Specify the path to the .env file
+dotenv_path = "myenv/.env"
+
+# Load environment variables from the specified .env file
+load_dotenv(dotenv_path)
 
 import os
 import logging
