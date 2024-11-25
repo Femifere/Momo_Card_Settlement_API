@@ -1,7 +1,7 @@
 
-# Momo Card Settlement Project 🚀
+# Momo Card Transaction & Settlement Project 🚀
 
-Welcome to the **Momo Card Settlement Project**! This project provides a financial data API service designed for managing card transactions, processing large CSV files, and storing the data in a MySQL database with Redis caching. It also includes JWT authentication for secure access.
+Welcome to the **Momo Card Transaction & Settlement Project**! This project offers a robust financial data API service for managing card transactions, processing large datasets from CSV files, and storing the results in a scalable database system. Featuring a secure API, caching with Redis, and seamless deployment using Docker, this project is optimized for high performance and reliability.
 
 ---
 
@@ -11,35 +11,39 @@ Welcome to the **Momo Card Settlement Project**! This project provides a financi
 2. [Technologies Used](#technologies-used-🛠️)
 3. [Installation Guide](#installation-guide-📝)
 4. [Running the Project](#running-the-project-🚀)
-5. [API Endpoints](#api-endpoints-🧑‍💻)
-6. [Usage Tutorial for Frontend](#usage-tutorial-for-frontend-🎨)
+5. [Environment Variables](#environment-variables-🔑)
+6. [API Endpoints](#api-endpoints-🧑‍💻)
 7. [How the Project Works](#how-the-project-works-🔍)
-8. [Contributing](#contributing-🤝)
-9. [License](#license-📜)
+8. [Docker Setup](#docker-setup-🐋)
+9. [Testing](#testing-✅)
+10. [Usage Tutorial for Frontend](#usage-tutorial-for-frontend-🎨)
+11. [Contributing](#contributing-🤝)
+12. [License](#license-📜)
 
 ---
 
 ## Features ⚡
 
-- **Fetch & Process CSV Data**: Periodically fetches card transaction data from a specified file and loads it into the database.
-- **Transaction Management**: Stores card transaction data in a MySQL database with advanced query capabilities (filtering, sorting, pagination).
-- **Caching**: Redis cache is used to speed up frequently requested data.
-- **Asynchronous Data Operations**: Optimized for non-blocking database operations using SQLAlchemy's async API.
-- **Secure Authentication**: JWT token-based authentication for users to interact with the API.
+- **Fetch & Process Data**: Periodically fetches card transaction data from CSV files and processes them for database insertion.
+- **Database Management**: Stores transaction data in MySQL with advanced query features (filtering, sorting, pagination).
+- **Caching**: Frequently accessed data is cached in Redis for faster API responses.
+- **Asynchronous Tasks**: Background tasks powered by asyncio for efficient data processing.
+- **Secure API**: JWT-based token authentication for user access control.
+- **Comprehensive API Documentation**: Interactive docs with Swagger and ReDoc for ease of integration.
 
 ---
 
 ## Technologies Used 🛠️
 
-- **Python 3.9+**
-- **FastAPI**: Web framework for building APIs
-- **SQLAlchemy**: ORM for interacting with MySQL
-- **MySQL** (aiomysql driver): Database for storing transactions
-- **Redis**: Caching frequently accessed data
-- **Pandas**: Data manipulation and cleaning
-- **JWT** (JSON Web Tokens): Authentication
-- **Uvicorn**: ASGI server to run FastAPI
-- **Asyncio**: Handling background tasks
+- **Python 3.10+**  
+- **FastAPI**: High-performance web framework for APIs.  
+- **SQLAlchemy**: ORM for managing MySQL interactions.  
+- **MySQL**: Relational database for storing transactions.  
+- **Redis**: In-memory caching for fast data retrieval.  
+- **Pandas**: For data manipulation and transformation.  
+- **JWT (JSON Web Tokens)**: Secure authentication.  
+- **Uvicorn**: ASGI server for FastAPI.  
+- **Docker**: Containerized deployment.
 
 ---
 
@@ -47,19 +51,20 @@ Welcome to the **Momo Card Settlement Project**! This project provides a financi
 
 ### Prerequisites
 
-1. Python 3.9+ installed on your system.
-2. MySQL running locally or remotely.
-3. Redis running locally or remotely.
+1. **Python**: Ensure Python 3.10+ is installed.
+2. **MySQL**: A running MySQL instance (local or cloud).
+3. **Redis**: A running Redis instance (local or cloud).
+4. **Docker & Docker Compose**: For containerized deployment (optional).
 
 ### Step-by-Step Setup
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/your-username/momo-card-settlement.git
-   cd momo-card-settlement
+   git clone <repository-url>
+   cd <repository-directory>
    ```
 
-2. **Create a Virtual Environment (optional but recommended)**:
+2. **Set Up Virtual Environment**:
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
@@ -70,154 +75,157 @@ Welcome to the **Momo Card Settlement Project**! This project provides a financi
    pip install -r requirements.txt
    ```
 
-4. **Configure Environment Variables**: Create a `.env` file in the root directory with the following configuration:
-   ```env
-   DATABASE_URL=mysql+aiomysql://root:password@127.0.0.1:3306/momo_card_settlement
+4. **Configure Environment Variables**:  
+   Create a `.env` file with the following structure:
+   ```plaintext
+   DATABASE_URL=mysql+aiomysql://<user>:<password>@<host>:<port>/<database>
    REDIS_HOST=localhost
    REDIS_PORT=6379
    ```
 
-5. **Run MySQL Database**: Ensure that your MySQL database is running, and create the `momo_card_settlement` database:
+5. **Initialize MySQL Database**:  
+   Log in to your MySQL server and create the database:
    ```sql
-   CREATE DATABASE momo_card_settlement;
+   CREATE DATABASE momo_card_transactions;
    ```
 
-6. **Run Redis**: If you haven't installed Redis yet, you can [download it here](https://redis.io/download). Make sure Redis is running on `localhost:6379`.
+6. **Run the Application**:
+   ```bash
+   uvicorn main:app --reload
+   ```
+
+7. **Access API Documentation**:  
+   Open the interactive API docs at:  
+   - Swagger UI: `http://127.0.0.1:8000/docs`  
+   - ReDoc: `http://127.0.0.1:8000/redoc`
+
+---
+
+## Environment Variables 🔑
+
+Ensure the following variables are configured in your `.env` file:
+
+```plaintext
+DATABASE_URL=mysql+aiomysql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE>
+REDIS_HOST=localhost
+REDIS_PORT=6379
+LOG_LEVEL=info
+```
 
 ---
 
 ## Running the Project 🚀
 
-1. **Start the Application**:
+1. **Start MySQL and Redis**: Ensure both services are running.
+2. **Run the Application**:
    ```bash
-   uvicorn main:app --reload
+   uvicorn main:app --host 0.0.0.0 --port 8000
    ```
-
-2. **Open the API Docs**: Once the server is running, visit the automatic Swagger UI at:
-   [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-
-3. **Start the Periodic Background Task**: The background task will fetch and process the files every hour automatically.
 
 ---
 
 ## API Endpoints 🧑‍💻
 
-1. **POST `/api/token`: Authentication**
-   - Generates a JWT token using the username and password provided.
-   - **Request**:
-     ```json
-     {
-       "username": "your_username",
-       "password": "your_password"
-     }
-     ```
-   - **Response**:
-     ```json
-     {
-       "access_token": "jwt_token_here",
-       "token_type": "bearer"
-     }
-     ```
+### **Authentication**
+- **POST `/api/token`**: Generates a JWT token for authentication.
 
-2. **GET `/api/transactions`: Fetch Transactions**
-   - Fetches transaction data from the database with support for pagination, filtering, and sorting.
-   - **Query Parameters**:
-     - `skip` (int): The number of transactions to skip (default: 0).
-     - `limit` (int): The number of transactions to return (default: 10).
-     - `filter_by` (str): Filter by column name (optional).
-     - `filter_value` (str): The value to filter by (optional).
-     - `sort_by` (str): Column to sort by (optional).
-     - `sort_order` (str): "asc" or "desc" (optional, default: "asc").
-   - **Example**:
-     ```bash
-     GET /api/transactions?skip=0&limit=10&sort_by=AMOUNT&sort_order=desc
-     ```
-   - **Response**:
-     ```json
-     {
-       "transactions": [
-         {
-           "DOC_IDT": "12345",
-           "AMOUNT": 100.00,
-           "TRANS_DATE": "2024-10-31"
-         },
-         ...
-       ]
-     }
-     ```
+### **Transactions**
+- **GET `/api/transactions`**: Fetch transaction data with optional filtering, sorting, and pagination.
+- **POST `/api/transactions`**: Add new transaction data.
 
-3. **GET `/`: Welcome Message**
-   - Displays a welcome message and a sample of the most recent transactions.
+### **Home**
+- **GET `/`**: Returns a welcome message and a sample of recent transactions.
 
----
-
-## Usage Tutorial for Frontend 🎨
-
-1. **Get the Authentication Token**:
-   Use a POST request to `/api/token` with your username and password.
-   ```javascript
-   const getToken = async () => {
-     const response = await fetch('/api/token', {
-       method: 'POST',
-       body: new URLSearchParams({
-         'username': 'your_username',
-         'password': 'your_password',
-       }),
-     });
-     const data = await response.json();
-     return data.access_token;
-   };
-   ```
-
-2. **Use the Token for API Requests**:
-   Include the token in the `Authorization` header for authenticated API calls.
-   ```javascript
-   const fetchTransactions = async () => {
-     const token = await getToken();
-     const response = await fetch('/api/transactions?skip=0&limit=10', {
-       headers: {
-         'Authorization': `Bearer ${token}`,
-       },
-     });
-     const data = await response.json();
-     console.log(data.transactions);
-   };
-   ```
+Refer to `/docs` for detailed request/response structures.
 
 ---
 
 ## How the Project Works 🔍
 
-1. **Fetching Files**: The `fetch_files.py` script periodically fetches transaction data files (in CSV format) and stores them in a local directory.
-2. **Parsing & Transforming**: The `parse_transform.py` script parses these CSV files using pandas, cleans the data, and ensures it is in a format suitable for storage in the database.
-3. **Storing Data**: The cleaned data is then inserted into a MySQL database using SQLAlchemy's asynchronous API (`db_operations.py`).
-4. **Caching**: Frequently accessed data is stored in Redis to improve API response times.
-5. **Background Task**: The periodic task runs every hour, fetching new files and processing them automatically.
+1. **File Fetching**: CSV files are periodically fetched and stored locally.
+2. **Data Processing**: Files are parsed and validated using pandas.
+3. **Database Storage**: Validated data is saved into MySQL using SQLAlchemy's async API.
+4. **Caching**: Frequently queried data is cached in Redis for faster response times.
+5. **Background Task**: Periodic tasks ensure new files are processed automatically.
+
+---
+
+## Docker Setup 🐋
+
+1. **Build and Start Containers**:
+   ```bash
+   docker-compose up --build
+   ```
+
+2. **Stop Containers**:
+   ```bash
+   docker-compose down
+   ```
+
+3. **Access API**:
+   Visit `http://127.0.0.1:8000`.
+
+---
+
+## Testing ✅
+
+1. **Install Testing Tools**:
+   ```bash
+   pip install pytest pytest-asyncio
+   ```
+
+2. **Run Tests**:
+   ```bash
+   pytest
+   ```
+
+3. **Test Coverage**:
+   Ensure all modules are covered.
+
+---
+
+## Usage Tutorial for Frontend 🎨
+
+1. **Authenticate**:
+   Obtain a JWT token using the `/api/token` endpoint.
+
+2. **Fetch Data**:
+   Use the token to fetch transactions from the `/api/transactions` endpoint.
+
+   Example using JavaScript Fetch API:
+   ```javascript
+   const fetchTransactions = async (token) => {
+       const response = await fetch('/api/transactions', {
+           headers: { Authorization: `Bearer ${token}` },
+       });
+       const data = await response.json();
+       console.log(data.transactions);
+   };
+   ```
 
 ---
 
 ## Contributing 🤝
 
-We welcome contributions! Follow these steps to contribute:
+Contributions are welcome! Follow these steps:
 
 1. Fork the repository.
-2. Clone your fork to your local machine.
-3. Create a new branch:
+2. Create a new feature branch:
    ```bash
-   git checkout -b feature/your-feature
+   git checkout -b feature/new-feature
    ```
-4. Make your changes.
-5. Push to your branch:
+3. Commit changes and push:
    ```bash
-   git push origin feature/your-feature
+   git push origin feature/new-feature
    ```
-6. Create a Pull Request to the main repository.
+4. Open a pull request to the main branch.
 
 ---
 
 ## License 📜
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.  
+© 2024 MOMO PSB LTD.  
 
 ---
 

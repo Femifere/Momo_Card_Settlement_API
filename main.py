@@ -1,3 +1,4 @@
+#main.py
 import asyncio
 import os
 import logging
@@ -52,7 +53,7 @@ async def periodic_task():
             logger.info("Fetching and processing new files.")
             await fetch_files()
 
-            file_path = r"data\MOMORW_TRANSACTION_DUMP_20241031.csv"
+            file_path = r"data/MOMORW_TRANSACTION_DUMP_20241031.csv"
             logger.info(f"Processing file: {file_path}")
             await process_and_load_data(file_path)
 

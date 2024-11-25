@@ -1,3 +1,4 @@
+#docker-compose.yml
 version: "3.8"
 
 services:
@@ -16,13 +17,15 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./data:/app/data  # Removed the space after the colon
 
   db:
     image: mysql:8.0
     container_name: momo_card_db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: @Dharmahikona7612#
       MYSQL_DATABASE: maindb
     ports:
       - "3306:3306"

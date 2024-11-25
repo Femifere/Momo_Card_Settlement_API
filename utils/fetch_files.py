@@ -1,4 +1,4 @@
-#fetch_files.py
+#utils/fetch_files.py
 from dotenv import load_dotenv
 # Specify the path to the .env file
 dotenv_path = "myenv/.env"
@@ -13,8 +13,8 @@ import pandas as pd
 
 #Local Path and Repository path
 
-LOCAL_PATH = os.getenv("LOCAL_PATH")
-LOCAL_SAVE_PATH = os.getenv("LOCAL_SAVE_PATH")
+LOCAL_PATH = os.getenv("LOCAL_PATH", "app/MOMORW_TRANSACTION_DUMP_20241031.csv")
+LOCAL_SAVE_PATH = os.getenv("LOCAL_SAVE_PATH", "app/data/")
 
 #Function to fetch files from the repository
 async def fetch_files():
